@@ -108,7 +108,7 @@ pub trait CompileDbGenerator {
 
     /// Write compilation database to file
     fn write_to_file(&self, commands: &[CompileCommand], path: &Path)
-    -> Result<(), CompileDbError>;
+        -> Result<(), CompileDbError>;
 }
 
 #[cfg(test)]

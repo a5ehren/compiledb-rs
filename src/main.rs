@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use compiledb::{CompileDbError, Config};
 use std::io::BufRead;
 use std::path::PathBuf;
-use tracing::{Level, info};
+use tracing::{info, Level};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
