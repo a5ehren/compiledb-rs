@@ -48,16 +48,14 @@ impl MakeWrapper {
         })?;
 
         // Create parser for the make output
-        let parser = crate::parser::Parser::new(config)?;
+        let mut parser = crate::parser::Parser::new(config)?;
         let mut commands = Vec::new();
 
         // Process stdout
         let stdout_reader = BufReader::new(stdout);
         for line in stdout_reader.lines() {
             let line = line.map_err(CompileDbError::Io)?;
-            if let Some(cmd) = parser.parse_line(&line, config) {
-                commands.push(cmd);
-            }
+            commands.extend(parser.parse_line(&line, config));
         }
 
         // Process stderr (for warnings/errors)

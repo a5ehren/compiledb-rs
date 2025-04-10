@@ -61,7 +61,7 @@ pub struct Config {
     pub no_build: bool,
 
     /// Enable verbose output
-    pub verbose: bool,
+    pub verbose: u8,
 
     /// Skip source file existence check
     pub no_strict: bool,
@@ -90,7 +90,7 @@ impl Default for Config {
             build_dir: std::env::current_dir().unwrap_or_default(),
             exclude_patterns: Vec::new(),
             no_build: false,
-            verbose: false,
+            verbose: 0,
             no_strict: false,
             macros: Vec::new(),
             command_style: false,
@@ -119,7 +119,7 @@ mod tests {
     fn test_config_default() {
         let config = Config::default();
         assert!(!config.no_build);
-        assert!(!config.verbose);
+        assert!(config.verbose == 0);
         assert!(!config.no_strict);
         assert!(!config.command_style);
         assert!(!config.full_path);

@@ -28,9 +28,9 @@ struct Cli {
     #[arg(short = 'n', long = "no-build")]
     no_build: bool,
 
-    /// Enable verbose output
-    #[arg(short, long)]
-    verbose: bool,
+    /// Enable verbose output (-v for info, -vv for debug level messages)
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
 
     /// Skip source file existence check
     #[arg(short = 'S', long = "no-strict")]
@@ -51,14 +51,14 @@ struct Cli {
     /// Regular expressions to find compile commands
     #[arg(
         long = "regex-compile",
-        default_value = r"^.*-?(gcc|clang|cc|g\+\+|c\+\+|clang\+\+)-?.*(\\.exe)?"
+        default_value = r"(?:^|\s)(?:[^/]*/)*(gcc|clang|cc|g\+\+|c\+\+|clang\+\+|cl)(?:-[0-9\.]+)?(?:\s|$)"
     )]
     regex_compile: String,
 
     /// Regular expressions to find source files
     #[arg(
         long = "regex-file",
-        default_value = r"^.*\s-c.*\s(.*\\.(c|cpp|cc|cxx|c\+\+|s|m|mm|cu))(\s.*$|$)"
+        default_value = r"\s-c\s+(\S+\.(c|cpp|cc|cxx|c\+\+|s|m|mm|cu))\s+-o\s"
     )]
     regex_file: String,
 
@@ -76,8 +76,12 @@ enum Commands {
     },
 }
 
-fn setup_logging(verbose: bool) {
-    let level = if verbose { Level::DEBUG } else { Level::INFO };
+fn setup_logging(verbose: u8) {
+    let level = match verbose {
+        0 => Level::WARN,
+        1 => Level::INFO,
+        _ => Level::DEBUG,
+    };
     tracing_subscriber::fmt().with_max_level(level).init();
 }
 
@@ -133,7 +137,7 @@ fn run() -> Result<(), CompileDbError> {
         }
         None => {
             // Parse from file or stdin
-            let parser = compiledb::parser::Parser::new(&config)?;
+            let mut parser = compiledb::parser::Parser::new(&config)?;
 
             let commands = if let Some(log_file) = config.build_log.as_ref() {
                 parser.parse_file(log_file, &config)?
@@ -142,13 +146,33 @@ fn run() -> Result<(), CompileDbError> {
                 let stdin = std::io::stdin();
                 let reader = std::io::BufReader::new(stdin);
                 let mut commands = Vec::new();
+                let mut line_count = 0;
 
                 for line in reader.lines() {
+                    line_count += 1;
                     let line = line.map_err(CompileDbError::Io)?;
-                    if let Some(cmd) = parser.parse_line(&line, &config) {
-                        commands.push(cmd);
+                    let parsed_commands = parser.parse_line(&line, &config);
+                    if !parsed_commands.is_empty() {
+                        info!(
+                            "Found {} compile commands in line {}",
+                            parsed_commands.len(),
+                            line_count
+                        );
+                        for (i, cmd) in parsed_commands.iter().enumerate() {
+                            info!(
+                                "  Command {}.{}: file={}, dir={}",
+                                line_count,
+                                i + 1,
+                                cmd.file,
+                                cmd.directory
+                            );
+                        }
                     }
+                    commands.extend(parsed_commands);
                 }
+
+                info!("Total lines processed: {}", line_count);
+                info!("Total compile commands found: {}", commands.len());
 
                 commands
             };
