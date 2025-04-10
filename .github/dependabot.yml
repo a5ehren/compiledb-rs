@@ -8,6 +8,10 @@ updates:
     labels:
       - "dependencies"
       - "rust"
+    groups:
+      rust-all:
+        patterns:
+          - "*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -16,4 +20,8 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
-      - "github-actions" 
+      - "github-actions"
+    groups:
+      github-actions-all:
+        patterns:
+          - "*" 
