@@ -95,8 +95,8 @@ impl Default for Config {
             macros: Vec::new(),
             command_style: false,
             full_path: false,
-            regex_compile: String::from(r"^.*-?(gcc|clang|cc|g\+\+|c\+\+|clang\+\+)-?.*(\.exe)?"),
-            regex_file: String::from(r"^.*\s-c.*\s(.*\.(c|cpp|cc|cxx|c\+\+|s|m|mm|cu))(\s.*$|$)"),
+            regex_compile: String::from(r"(?:^|\s)(?:[^/]*/)*(gcc|clang|cc|g\+\+|c\+\+|clang\+\+|cl)(?:-[0-9\.]+)?(?:\s|$)"),
+            regex_file: String::from(r"\s-c\s+(\S+\.(c|cpp|cc|cxx|c\+\+|s|m|mm|cu))\s+-o\s"),
         }
     }
 }

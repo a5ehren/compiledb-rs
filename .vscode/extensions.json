@@ -1,0 +1,11 @@
+{
+    "recommendations": [
+        "rust-lang.rust-analyzer", // Rust language support
+        "fill-labs.dependi",       // Crates.io dependencies support
+        "vadimcn.vscode-lldb",     // Debugging support for Rust
+        "tamasfe.even-better-toml", // TOML file support
+        "panicbit.cargo",
+        "jscearcy.rust-doc-viewer",
+        "swellaby.vscode-rust-test-adapter"
+    ]
+}
