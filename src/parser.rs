@@ -6,7 +6,9 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
-use tracing::{debug, info, warn};
+extern crate env_logger;
+extern crate log;
+use log::{debug, info, warn};
 
 pub struct Parser {
     compile_regex: Regex,
@@ -432,6 +434,10 @@ mod tests {
 
     #[test]
     fn test_parse_complex_build_log() {
+        // enable logging, since log defaults to silent
+        std::env::set_var("RUST_LOG", "debug");
+        env_logger::init();
+
         let config = Config {
             no_strict: true,
             ..Config::default()
@@ -442,14 +448,17 @@ mod tests {
         let complex_cmd = r#"/usr/bin/printf " [ %-17.17s ]  CC           drivers/module/core/src/xyz/widget.c\n" ""module/core"" && ( set -e ;  /foo/bar/workspace/tools/hosts/platform-x64/compiler/gcc-9.2.0/bin/x86_64-none-linux-gcc  -include /foo/bar/workspace/project/core/engine/sdk/vendor/inc/sysdef.h  -isystem/foo/bar/workspace/tools/hosts/platform-x64/compiler/gcc-9.2.0/lib/gcc/x86_64-none-linux/9.2.0/include -isystem/foo/bar/workspace/tools/hosts/platform-x64/compiler/gcc-9.2.0/lib/gcc/x86_64-none-linux/9.2.0/include-fixed -isystem/foo/bar/workspace/tools/hosts/platform-x64/compiler/gcc-9.2.0/include/c++/9.2.0 -Werror -Wextra -Wshadow -Wcast-align -Wno-unused-parameter -Wno-missing-field-initializers  -fPIC        -g -fno-omit-frame-pointer -fdebug-prefix-map -fstack-protector           -DNDEBUG -DPLATFORM_X64 -DFEATURE_XYZ -DVENDOR_ABC -DCONFIG_TYPE=platform_release_config -D_STRICT_ANSI -D_XOPEN_SOURCE=700 -I_build/platform_x64_release/include/mirror/core/tools/xyz/include -I/foo/bar/workspace/project/core/engine/drivers/common/inc -I/foo/bar/workspace/project/core/engine/drivers/common/inc -isystem/foo/bar/workspace/project/core/engine/drivers/vendor/interface/public/ -fvisibility=hidden -DENABLE_FEATURE_A=1 -DFEATURE_B_SUPPORT=1  -DUSE_NEW_API     -x c         -pedantic -Wno-long-long     -std=c11 -MMD -MP -MT _build/platform_x64_release/widget.o -MF _build/platform_x64_release/widget_dep.mk.tmp -c /foo/bar/workspace/project/core/engine/drivers/module/core/src/xyz/widget.c -o _build/platform_x64_release/widget.o ; /usr/bin/sed -i _build/platform_x64_release/widget_dep.mk.tmp -e ' 1,3s| /foo/bar/workspace/project/core/engine/drivers/module/core/src/xyz/widget.c | |' ; /usr/bin/mv -f _build/platform_x64_release/widget_dep.mk.tmp _build/platform_x64_release/widget_dep.mk )"#;
 
         let result = parser.parse_line(complex_cmd, &config);
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.len(), 1, "Parser did not find any commands");
 
         let cmd = &result[0];
         assert_eq!(
-            cmd.directory,
-            "/foo/bar/workspace/project/core/engine/drivers/module"
+            cmd.directory, "/foo/bar/workspace/project/core/engine/drivers/module",
+            "Parser did not find correct directory"
         );
-        assert_eq!(cmd.file, "core/src/xyz/widget.c");
+        assert_eq!(
+            cmd.file, "core/src/xyz/widget.c",
+            "Parser did not find correct file"
+        );
 
         let expected_args = vec![
             "/foo/bar/workspace/tools/hosts/platform-x64/compiler/gcc-9.2.0/bin/x86_64-none-linux-gcc",
@@ -501,6 +510,10 @@ mod tests {
             "_build/platform_x64_release/widget.o"
         ];
 
-        assert_eq!(cmd.arguments.as_ref().unwrap(), &expected_args);
+        assert_eq!(
+            cmd.arguments.as_ref().unwrap(),
+            &expected_args,
+            "Parser did not find correct arguments"
+        );
     }
 }

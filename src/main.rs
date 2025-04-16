@@ -3,7 +3,9 @@ use clap::{Parser, Subcommand};
 use compiledb::{CompileDbError, Config};
 use std::io::BufRead;
 use std::path::PathBuf;
-use tracing::{info, Level};
+extern crate env_logger;
+extern crate log;
+use log::info;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -51,7 +53,7 @@ struct Cli {
     /// Regular expressions to find compile commands
     #[arg(
         long = "regex-compile",
-        default_value = r"(?:^|\s)(?:[^/]*/)*(gcc|clang|cc|g\+\+|c\+\+|clang\+\+|cl)(?:-[0-9\.]+)?(?:\s|$)"
+        default_value = r"(?:[^/]*/)*(gcc|clang|cc|g\+\+|c\+\+|clang\+\+|cl)(?:-[0-9\.]+)?(?:\s|$)"
     )]
     regex_compile: String,
 
@@ -76,18 +78,9 @@ enum Commands {
     },
 }
 
-fn setup_logging(verbose: u8) {
-    let level = match verbose {
-        0 => Level::WARN,
-        1 => Level::INFO,
-        _ => Level::DEBUG,
-    };
-    tracing_subscriber::fmt().with_max_level(level).init();
-}
-
 fn run() -> Result<(), CompileDbError> {
     let cli = Cli::parse();
-    setup_logging(cli.verbose);
+    env_logger::init();
 
     let config = Config {
         build_log: cli.build_log,
