@@ -4,7 +4,9 @@ use std::{
     path::PathBuf,
     process::{Command, Stdio},
 };
-use tracing::{debug, info};
+extern crate env_logger;
+extern crate log;
+use log::{debug, info};
 
 pub struct MakeWrapper {
     make_path: PathBuf,
