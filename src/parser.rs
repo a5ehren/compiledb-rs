@@ -89,10 +89,10 @@ impl Parser {
 
         // Skip non-compilation commands
         if !self.compile_regex.is_match(line) {
-            debug!("Line did not match compile regex: {}", line);
+            debug!("Line did not match compile regex: {line}");
             return commands;
         }
-        debug!("Found potential compile command: {}", line);
+        debug!("Found potential compile command: {line}");
 
         // Process nested commands (backticks)
         let line = self.process_nested_commands(line);
@@ -135,7 +135,7 @@ impl Parser {
     ) -> Result<Vec<CompileCommand>, CompileDbError> {
         let file = std::fs::File::open(path)
             .with_context(|| format!("Failed to open build log file: {}", path.display()))
-            .map_err(|e| CompileDbError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+            .map_err(|e| CompileDbError::Io(std::io::Error::other(e)))?;
 
         let reader = BufReader::new(file);
         let mut commands = Vec::new();
@@ -145,7 +145,7 @@ impl Parser {
             let line = line.map_err(CompileDbError::Io)?;
             let new_commands = self.parse_line(&line, config);
             for cmd in new_commands {
-                debug!("Adding command {}: {:?}", cmd_count, cmd);
+                debug!("Adding command {cmd_count}: {cmd:?}");
                 commands.push(cmd);
                 cmd_count += 1;
             }
@@ -236,7 +236,7 @@ impl Parser {
         // Extract source file
         let file_match = self.file_regex.captures(command)?;
         let file = file_match.get(1)?.as_str().to_string();
-        debug!("Found source file: {}", file);
+        debug!("Found source file: {file}");
 
         // Convert absolute path to relative path if needed
         let file = if Path::new(&file).is_absolute() {
@@ -301,7 +301,7 @@ impl Parser {
         // Check exclusion
         if let Some(ref exclude_re) = self.exclude_regex {
             if exclude_re.is_match(&file) {
-                info!("File {} excluded", file);
+                info!("File {file} excluded");
                 return None;
             }
         }

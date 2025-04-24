@@ -114,9 +114,7 @@ fn run() -> Result<(), CompileDbError> {
                         config.output_file.display()
                     )
                 })
-                .map_err(|e| {
-                    CompileDbError::Io(std::io::Error::new(std::io::ErrorKind::Other, e))
-                })?;
+                .map_err(|e| CompileDbError::Io(std::io::Error::other(e)))?;
 
             serde_json::to_writer_pretty(file, &commands).map_err(CompileDbError::Json)?;
 
@@ -164,7 +162,7 @@ fn run() -> Result<(), CompileDbError> {
                     commands.extend(parsed_commands);
                 }
 
-                info!("Total lines processed: {}", line_count);
+                info!("Total lines processed: {line_count}");
                 info!("Total compile commands found: {}", commands.len());
 
                 commands
@@ -178,9 +176,7 @@ fn run() -> Result<(), CompileDbError> {
                         config.output_file.display()
                     )
                 })
-                .map_err(|e| {
-                    CompileDbError::Io(std::io::Error::new(std::io::ErrorKind::Other, e))
-                })?;
+                .map_err(|e| CompileDbError::Io(std::io::Error::other(e)))?;
 
             serde_json::to_writer_pretty(file, &commands).map_err(CompileDbError::Json)?;
 
@@ -196,7 +192,7 @@ fn run() -> Result<(), CompileDbError> {
 
 fn main() {
     if let Err(e) = run() {
-        eprintln!("Error: {}", e);
+        eprintln!("Error: {e}");
         std::process::exit(1);
     }
 }

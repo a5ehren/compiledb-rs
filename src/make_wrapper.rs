@@ -35,7 +35,7 @@ impl MakeWrapper {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        debug!("Executing make command: {:?}", command);
+        debug!("Executing make command: {command:?}");
 
         let mut child = command
             .spawn()
@@ -64,7 +64,7 @@ impl MakeWrapper {
         let stderr_reader = BufReader::new(stderr);
         for line in stderr_reader.lines() {
             let line = line.map_err(CompileDbError::Io)?;
-            debug!("Make stderr: {}", line);
+            debug!("Make stderr: {line}");
         }
 
         // Wait for make to finish
@@ -93,7 +93,7 @@ impl MakeWrapper {
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit());
 
-        debug!("Running build command: {:?}", command);
+        debug!("Running build command: {command:?}");
 
         let status = command
             .status()
