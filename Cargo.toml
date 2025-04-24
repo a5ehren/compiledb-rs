@@ -2,7 +2,7 @@
 name = "compiledb"
 version = "0.1.0"
 edition = "2021"
-authors = ["Original: fcying, Rust port: community"]
+authors = ["Original: fcying, Rust port: a5ehren"]
 description = "Clang's Compilation Database generator for make-based build systems"
 license = "GPL-3.0"
 rust-version = "1.74.0"
@@ -14,7 +14,7 @@ categories = ["command-line-utilities", "development-tools::build-utils"]
 maintenance = { status = "passively-maintained" }
 
 [dependencies]
-clap = { version = "4.5.36", features = ["derive"] }
+clap = { version = "4.5.37", features = ["derive"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 regex = "1.11.1"
