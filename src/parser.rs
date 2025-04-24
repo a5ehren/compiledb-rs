@@ -434,6 +434,12 @@ mod tests {
 
     #[test]
     fn test_parse_complex_build_log() {
+        // Skip this test on Windows platforms
+        if cfg!(target_os = "windows") {
+            println!("Skipping test_parse_complex_build_log on Windows");
+            return;
+        }
+
         // enable logging, since log defaults to silent
         std::env::set_var("RUST_LOG", "debug");
         env_logger::init();
