@@ -106,11 +106,10 @@ jobs:
             cargo build --release --target ${{ matrix.info.target }} --locked
           fi
       
-      - name: Prepare asset
-        shell: bash
+      - name: Copy files
         run: |
-          mkdir -p release
-          cp target/release/${{ matrix.info.artifact_name }} release/${{ matrix.info.asset_name }}
+          mkdir -p ${{ github.workspace }}/release
+          cp ${{ github.workspace }}/target/release/${{ matrix.info.artifact_name }} ${{ github.workspace }}/release/${{ matrix.info.asset_name }}
       
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
