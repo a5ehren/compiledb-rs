@@ -108,7 +108,6 @@ jobs:
       - name: Copy files
         run: |
           mkdir -p ${{ github.workspace }}/release
-          tree ${{ github.workspace }}/target
           cp ${{ github.workspace }}/target/release/${{ matrix.info.artifact_name }} ${{ github.workspace }}/release/${{ matrix.info.asset_name }}
       
       - name: Upload Release Asset
