@@ -93,10 +93,12 @@ jobs:
       # don't actually need this at the moment as github now has native arm runners
       # keep it here so that I can do riscv in a few years if I want to
       - name: Install cross
+        shell: bash
         if: ${{ matrix.info.cross }}
         run: RUSTFLAGS="" cargo install cross --git https://github.com/cross-rs/cross --branch main
       
       - name: Build
+        shell: bash
         run: |
           cd ${{ github.workspace }}
           if [[ ${{ matrix.info.cross }} == "true" ]]; then
@@ -106,6 +108,7 @@ jobs:
           fi
       
       - name: Copy files
+        shell: bash
         run: |
           mkdir -p ${{ github.workspace }}/release
           cp ${{ github.workspace }}/target/release/${{ matrix.info.artifact_name }} ${{ github.workspace }}/release/${{ matrix.info.asset_name }}
