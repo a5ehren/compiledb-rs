@@ -34,7 +34,7 @@ jobs:
       
       - name: Check package version
         run: |
-          version=$(cargo pkgid | cut -d# -f2)
+          version=$(cargo pkgid | cut -d# -f2 | cut -d@ -f2)
           tag="${GITHUB_REF#refs/tags/}"
           if [ "v$version" != "$tag" ]; then
             echo "Package version ($version) does not match tag ($tag)"
