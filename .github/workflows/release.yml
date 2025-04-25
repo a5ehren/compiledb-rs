@@ -100,15 +100,16 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           if [[ ${{ matrix.info.cross }} == "true" ]]; then
-            cross build --release --target ${{ matrix.info.target }} --locked
+            cross build --release --target ${{ matrix.info.target }} --locked --bins --all-features
           else
-            cargo build --release --target ${{ matrix.info.target }} --locked --target-dir ${{ github.workspace }}/target/${{ matrix.info.target }}
+            cargo build --release --locked --bins --all-features
           fi
       
       - name: Copy files
         run: |
           mkdir -p ${{ github.workspace }}/release
-          cp ${{ github.workspace }}/target/${{ matrix.info.target }}/release/${{ matrix.info.artifact_name }} ${{ github.workspace }}/release/${{ matrix.info.asset_name }}
+          tree ${{ github.workspace }}/target
+          cp ${{ github.workspace }}/target/release/${{ matrix.info.artifact_name }} ${{ github.workspace }}/release/${{ matrix.info.asset_name }}
       
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
