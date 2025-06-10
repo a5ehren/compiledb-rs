@@ -2,6 +2,10 @@
 
 A fast Rust implementation of [Clang's JSON Compilation Database][compdb] generator for GNU `make`-based build systems. This is a Rust rewrite of [compiledb-go](https://github.com/fcying/compiledb-go) for even better performance and safety.
 
+## Project Status
+
+- I consider this project to be feature-complete. I will sometimes release updates for dependency refreshes. Please open an issue or PR if you find a bug.
+
 ## Features
 
 - Fast compilation database generation
