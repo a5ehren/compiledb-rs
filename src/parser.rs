@@ -441,7 +441,9 @@ mod tests {
         }
 
         // enable logging, since log defaults to silent
-        std::env::set_var("RUST_LOG", "debug");
+        unsafe {
+            std::env::set_var("RUST_LOG", "debug");
+        }
         env_logger::init();
 
         let config = Config {
@@ -474,7 +476,7 @@ mod tests {
             "-isystem/foo/bar/workspace/tools/hosts/platform-x64/compiler/gcc-9.2.0/lib/gcc/x86_64-none-linux/9.2.0/include-fixed",
             "-isystem/foo/bar/workspace/tools/hosts/platform-x64/compiler/gcc-9.2.0/include/c++/9.2.0",
             "-Werror",
-            "-Wextra", 
+            "-Wextra",
             "-Wshadow",
             "-Wcast-align",
             "-Wno-unused-parameter",
@@ -513,7 +515,7 @@ mod tests {
             "-c",
             "core/src/xyz/widget.c",
             "-o",
-            "_build/platform_x64_release/widget.o"
+            "_build/platform_x64_release/widget.o",
         ];
 
         assert_eq!(
