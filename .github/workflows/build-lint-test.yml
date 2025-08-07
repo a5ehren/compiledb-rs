@@ -38,10 +38,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup 1.74.0 Rust toolchain with caching
+      - name: Setup 1.85.0 Rust toolchain with caching
         uses: brndnmtthws/rust-action@v1
         with:
-          toolchain: 1.74.0
+          toolchain: 1.85.0
       
       - name: Check MSRV
         run: cargo check --all-features
