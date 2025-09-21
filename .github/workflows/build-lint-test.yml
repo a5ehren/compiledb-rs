@@ -21,7 +21,7 @@ jobs:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Rust toolchain with caching
         uses: brndnmtthws/rust-action@v1
@@ -36,7 +36,7 @@ jobs:
     name: Check MSRV
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup 1.85.0 Rust toolchain with caching
         uses: brndnmtthws/rust-action@v1
@@ -60,7 +60,7 @@ jobs:
           - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup ${{ matrix.rust-toolchain }} Rust toolchain with caching
         uses: brndnmtthws/rust-action@v1
         with:
@@ -76,7 +76,7 @@ jobs:
     name: Code Coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup nightly Rust toolchain with caching
         uses: brndnmtthws/rust-action@v1
