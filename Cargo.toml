@@ -1,6 +1,6 @@
 [package]
 name = "compiledb"
-version = "1.1.0"
+version = "1.1.1"
 edition = "2024"
 authors = ["Original: fcying, Rust port: a5ehren"]
 description = "Clang's Compilation Database generator for make-based build systems"
