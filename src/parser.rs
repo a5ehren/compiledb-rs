@@ -27,6 +27,12 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(config: &Config) -> Result<Self, CompileDbError> {
+        info!(
+            "Initializing parser with compile regex: {}",
+            config.regex_compile
+        );
+        info!("File regex: {}", config.regex_file);
+
         let compile_regex = Regex::new(&config.regex_compile)
             .map_err(|e| CompileDbError::InvalidCommand(e.to_string()))?;
         let file_regex = Regex::new(&config.regex_file)
@@ -34,6 +40,7 @@ impl Parser {
 
         // Initialize exclude regex if pattern is provided
         let exclude_regex = if !config.exclude_patterns.is_empty() {
+            info!("Exclude patterns: {:?}", config.exclude_patterns);
             Some(
                 Regex::new(&config.exclude_patterns[0])
                     .map_err(|e| CompileDbError::InvalidCommand(e.to_string()))?,
@@ -48,6 +55,8 @@ impl Parser {
         } else {
             std::env::current_dir().map_err(CompileDbError::Io)?
         };
+
+        info!("Working directory: {}", working_dir.display());
 
         Ok(Self {
             compile_regex,
@@ -133,6 +142,8 @@ impl Parser {
         path: &Path,
         config: &Config,
     ) -> Result<Vec<CompileCommand>, CompileDbError> {
+        info!("Parsing build log file: {}", path.display());
+
         let file = std::fs::File::open(path)
             .with_context(|| format!("Failed to open build log file: {}", path.display()))
             .map_err(|e| CompileDbError::Io(std::io::Error::other(e)))?;
@@ -140,17 +151,21 @@ impl Parser {
         let reader = BufReader::new(file);
         let mut commands = Vec::new();
         let mut cmd_count = 0;
+        let mut line_count = 0;
 
         for line in reader.lines() {
+            line_count += 1;
             let line = line.map_err(CompileDbError::Io)?;
             let new_commands = self.parse_line(&line, config);
             for cmd in new_commands {
-                debug!("Adding command {cmd_count}: {cmd:?}");
+                debug!("Adding command {}: {:?}", cmd_count, cmd);
                 commands.push(cmd);
                 cmd_count += 1;
             }
         }
 
+        info!("Processed {} lines from build log", line_count);
+        info!("Found {} compilation commands", commands.len());
         Ok(commands)
     }
 
@@ -317,6 +332,13 @@ impl Parser {
 
         // Add custom macros if specified
         final_args.extend(config.macros.iter().cloned());
+
+        info!(
+            "Found compile command for file: {} in directory: {}",
+            file,
+            self.working_dir.display()
+        );
+        debug!("Command arguments: {:?}", final_args);
 
         Some(CompileCommand {
             directory: self.working_dir.to_string_lossy().into_owned(),
