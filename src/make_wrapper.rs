@@ -25,6 +25,10 @@ impl MakeWrapper {
         args: &[String],
         config: &Config,
     ) -> Result<Vec<CompileCommand>, CompileDbError> {
+        info!("Executing make with dry-run flags (-Bnkw)");
+        info!("Make arguments: {:?}", args);
+        info!("Build directory: {}", config.build_dir.display());
+
         let mut command = Command::new(&self.make_path);
 
         // Add standard make flags for dry run and continue on error
@@ -83,8 +87,12 @@ impl MakeWrapper {
     /// Run the actual build command (when no_build is false)
     pub fn run_build(&self, args: &[String], config: &Config) -> Result<(), CompileDbError> {
         if config.no_build {
+            info!("Skipping actual build (--no-build flag set)");
             return Ok(());
         }
+
+        info!("Running actual build command");
+        info!("Make arguments: {:?}", args);
 
         let mut command = Command::new(&self.make_path);
         command

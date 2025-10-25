@@ -80,7 +80,14 @@ enum Commands {
 
 fn run() -> Result<(), CompileDbError> {
     let cli = Cli::parse();
-    env_logger::init();
+
+    // Configure logging based on verbose flag
+    let log_level = match cli.verbose {
+        0 => "warn",
+        1 => "info",
+        _ => "debug",
+    };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     let config = Config {
         build_log: cli.build_log,
@@ -134,6 +141,7 @@ fn run() -> Result<(), CompileDbError> {
                 parser.parse_file(log_file, &config)?
             } else {
                 // Read from stdin
+                info!("Reading build output from stdin...");
                 let stdin = std::io::stdin();
                 let reader = std::io::BufReader::new(stdin);
                 let mut commands = Vec::new();
