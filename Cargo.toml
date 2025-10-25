@@ -1,6 +1,6 @@
 [package]
 name = "compiledb"
-version = "1.1.1"
+version = "1.1.2"
 edition = "2024"
 authors = ["Original: fcying, Rust port: a5ehren"]
 description = "Clang's Compilation Database generator for make-based build systems"
@@ -14,19 +14,19 @@ categories = ["command-line-utilities", "development-tools::build-utils"]
 maintenance = { status = "passively-maintained" }
 
 [dependencies]
-clap = { version = "4.5.47", features = ["derive"] }
-serde = { version = "1.0.223", features = ["derive"] }
+clap = { version = "4.5.50", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
-regex = "1.11.2"
-anyhow = "1.0.99"
-thiserror = "2.0.16"
-tokio = { version = "1.47.1", features = ["full"] }
+regex = "1.12.2"
+anyhow = "1.0.100"
+thiserror = "2.0.17"
+tokio = { version = "1.48.0", features = ["full"] }
 tracing-subscriber = "0.3.20"
 which = "8.0.0"
 env_logger = "0.11.8"
 log = "0.4.28"
 
 [dev-dependencies]
-tempfile = "3.22.0"
+tempfile = "3.23.0"
 assert_fs = "1.1.3"
 predicates = "3.1.3"
