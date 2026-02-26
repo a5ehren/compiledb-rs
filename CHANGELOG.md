@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.5](https://github.com/a5ehren/compiledb-rs/compare/v1.1.4...v1.1.5) - 2026-02-26
+
+### Other
+
+- Bump depends
+
 ## [1.1.4](https://github.com/a5ehren/compiledb-rs/compare/v1.1.3...v1.1.4) - 2026-01-23
 
 ### Other
