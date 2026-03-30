@@ -85,7 +85,7 @@ jobs:
       - run: cargo tarpaulin --locked --out Xml
       
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_ORG_TOKEN }}
           fail_ci_if_error: true
