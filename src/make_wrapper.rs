@@ -121,6 +121,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    #[cfg(not(target_os = "windows"))]
     fn test_make_wrapper_execution() {
         let dir = tempdir().unwrap();
         let makefile_path = dir.path().join("Makefile");
@@ -148,5 +149,59 @@ mod tests {
         assert!(result.is_ok());
         let commands = result.unwrap();
         assert_eq!(commands.len(), 1);
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn test_make_wrapper_run_build() {
+        let dir = tempdir().unwrap();
+        let makefile_path = dir.path().join("Makefile");
+        let mut file = File::create(&makefile_path).unwrap();
+
+        // Create a simple Makefile
+        writeln!(file, "all: test.o\n").unwrap();
+        writeln!(file, "test.o: test.c\n").unwrap();
+        writeln!(file, "\tgcc -c test.c -o test.o\n").unwrap();
+
+        // Create a dummy source file
+        let source_path = dir.path().join("test.c");
+        let mut file = File::create(&source_path).unwrap();
+        writeln!(file, "int main() {{ return 0; }}\n").unwrap();
+
+        let config = Config {
+            build_dir: dir.path().to_path_buf(),
+            no_strict: true,
+            no_build: false, // Enable actual build
+            ..Config::default()
+        };
+
+        let wrapper = MakeWrapper::new();
+        // First execute to get commands
+        let _ = wrapper.execute(&[], &config).unwrap();
+        // Then run actual build (should succeed with our simple Makefile)
+        let result = wrapper.run_build(&[], &config);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_make_wrapper_run_build_skipped() {
+        let dir = tempdir().unwrap();
+        let config = Config {
+            build_dir: dir.path().to_path_buf(),
+            no_build: true, // Skip actual build
+            ..Config::default()
+        };
+
+        let wrapper = MakeWrapper::new();
+        let result = wrapper.run_build(&[], &config);
+        assert!(result.is_ok()); // Should succeed without running make
+    }
+
+    // This test doesn't require make, so it can run on all platforms
+    #[test]
+    fn test_make_wrapper_new() {
+        let wrapper = MakeWrapper::new();
+        // Just verify it doesn't panic
+        assert!(!wrapper.make_path.as_os_str().is_empty());
     }
 }
