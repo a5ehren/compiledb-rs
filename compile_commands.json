@@ -1,0 +1,13 @@
+[
+  {
+    "directory": "/code_projects/compiledb-rs",
+    "file": "test.c",
+    "arguments": [
+      "gcc",
+      "-c",
+      "test.c",
+      "-o",
+      "test.o"
+    ]
+  }
+]

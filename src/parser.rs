@@ -217,7 +217,11 @@ impl Parser {
                 let enter_dir = PathBuf::from(dir.as_str());
                 if enter_dir.as_os_str() != "." {
                     self.dir_stack.insert(0, enter_dir.clone());
-                    self.working_dir = enter_dir;
+                    self.working_dir = if enter_dir.is_absolute() {
+                        enter_dir
+                    } else {
+                        self.working_dir.join(enter_dir)
+                    };
                     info!("Make -C directory: {}", self.working_dir.display());
                 }
                 return true;
@@ -425,13 +429,8 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_os = "windows"))]
     fn test_parse_complex_build_log() {
-        // Skip this test on Windows platforms
-        if cfg!(target_os = "windows") {
-            println!("Skipping test_parse_complex_build_log on Windows");
-            return;
-        }
-
         // enable logging, since log defaults to silent
         let mut builder = env_logger::Builder::from_default_env();
         builder.filter_level(log::LevelFilter::Debug);
@@ -508,5 +507,219 @@ mod tests {
             &expected_args,
             "Parser did not find correct arguments"
         );
+    }
+
+    #[test]
+    fn test_exclude_patterns() {
+        let config = Config {
+            no_strict: true,
+            exclude_patterns: vec![r"test\.c"].into_iter().map(String::from).collect(),
+            ..Config::default()
+        };
+        let mut parser = Parser::new(&config).unwrap();
+
+        // This should be excluded
+        let cmd = "gcc -c test.c -o test.o";
+        let result = parser.parse_line(cmd, &config);
+        assert_eq!(result.len(), 0, "File matching exclude pattern should be filtered");
+
+        // This should not be excluded
+        let cmd = "gcc -c other.c -o other.o";
+        let result = parser.parse_line(cmd, &config);
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn test_full_path_compiler() {
+        let config = Config { no_strict: true, full_path: true, ..Config::default() };
+        let mut parser = Parser::new(&config).unwrap();
+
+        let cmd = "gcc -c test.c -o test.o";
+        let result = parser.parse_line(cmd, &config);
+        assert_eq!(result.len(), 1);
+        let cmd = &result[0];
+        let args = cmd.arguments.as_ref().unwrap();
+        // When full_path is true, the compiler should be resolved to full path
+        // In test environment, gcc might not exist, so we just check it doesn't panic
+        assert!(args[0].contains("gcc"));
+    }
+
+    #[test]
+    fn test_command_style_output() {
+        let config = Config { no_strict: true, command_style: true, ..Config::default() };
+        let mut parser = Parser::new(&config).unwrap();
+
+        let cmd = "gcc -c test.c -o test.o";
+        let result = parser.parse_line(cmd, &config);
+        assert_eq!(result.len(), 1);
+        let cmd = &result[0];
+        // In command_style, command should be Some, arguments should be None
+        assert!(cmd.command.is_some());
+        assert!(cmd.arguments.is_none());
+        assert!(cmd.command.as_ref().unwrap().contains("gcc"));
+    }
+
+    #[test]
+    fn test_macros_handling() {
+        let config = Config {
+            no_strict: true,
+            macros: vec!["-DTEST_MACRO=1", "-DANOTHER_MACRO"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+            ..Config::default()
+        };
+        let mut parser = Parser::new(&config).unwrap();
+
+        let cmd = "gcc -c test.c -o test.o";
+        let result = parser.parse_line(cmd, &config);
+        assert_eq!(result.len(), 1);
+        let cmd = &result[0];
+        let args = cmd.arguments.as_ref().unwrap();
+        // Macros should be appended to the arguments
+        assert!(args.contains(&"-DTEST_MACRO=1".to_string()));
+        assert!(args.contains(&"-DANOTHER_MACRO".to_string()));
+    }
+
+    #[test]
+    fn test_no_strict_mode() {
+        let config = Config { no_strict: true, ..Config::default() };
+        let mut parser = Parser::new(&config).unwrap();
+
+        // File doesn't exist, but no_strict is true so it should still parse
+        let cmd = "gcc -c nonexistent.c -o nonexistent.o";
+        let result = parser.parse_line(cmd, &config);
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn test_strict_mode_missing_file() {
+        let config = Config {
+            no_strict: false, // strict mode
+            ..Config::default()
+        };
+        let mut parser = Parser::new(&config).unwrap();
+
+        // File doesn't exist and strict mode is on, should be filtered
+        let cmd = "gcc -c nonexistent.c -o nonexistent.o";
+        let result = parser.parse_line(cmd, &config);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_make_c_directory() {
+        let config = Config { no_strict: true, ..Config::default() };
+        let mut parser = Parser::new(&config).unwrap();
+        let initial_dir = parser.working_dir.clone();
+
+        // Test make -C directory
+        let result = parser.parse_line("make -C subdir target", &config);
+        assert_eq!(result.len(), 0);
+        assert_eq!(parser.working_dir, initial_dir.join("subdir"));
+
+        // Test make -C .
+        parser.working_dir = initial_dir.clone();
+        let result = parser.parse_line("make -C . target", &config);
+        assert_eq!(result.len(), 0);
+        assert_eq!(parser.working_dir, initial_dir);
+    }
+
+    #[test]
+    fn test_split_commands_edge_cases() {
+        let config = Config { no_strict: true, ..Config::default() };
+        let parser = Parser::new(&config).unwrap();
+
+        // Test multiple commands separated by &&
+        let cmds = parser.split_commands("gcc -c a.c -o a.o && gcc -c b.c -o b.o");
+        assert_eq!(cmds.len(), 2);
+
+        // Test commands separated by ||
+        let cmds = parser.split_commands("cmd1 || cmd2");
+        assert_eq!(cmds.len(), 2);
+
+        // Test commands separated by ;
+        let cmds = parser.split_commands("cmd1; cmd2");
+        assert_eq!(cmds.len(), 2);
+
+        // Test empty and whitespace
+        let cmds = parser.split_commands("   ");
+        assert_eq!(cmds.len(), 0);
+
+        // Test single command
+        let cmds = parser.split_commands("gcc -c test.c -o test.o");
+        assert_eq!(cmds.len(), 1);
+    }
+
+    #[test]
+    fn test_nested_commands_multiple() {
+        let config = Config { no_strict: true, ..Config::default() };
+        let mut parser = Parser::new(&config).unwrap();
+
+        // Multiple backtick commands
+        let cmd = "gcc -c `echo test1.c` -o test1.o && gcc -c `echo test2.c` -o test2.o";
+        let result = parser.parse_line(cmd, &config);
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_cpp_file_extensions() {
+        let config = Config { no_strict: true, ..Config::default() };
+        let mut parser = Parser::new(&config).unwrap();
+
+        let extensions = vec!["cpp", "cc", "cxx", "c++", "s", "m", "mm", "cu"];
+        for ext in extensions {
+            let cmd = format!("gcc -c test.{ext} -o test.o");
+            let result = parser.parse_line(&cmd, &config);
+            assert_eq!(result.len(), 1, "Failed for extension: {ext}");
+            assert_eq!(result[0].file, format!("test.{ext}"));
+        }
+    }
+
+    #[test]
+    fn test_make_leave_directory_stack() {
+        let config = Config { no_strict: true, ..Config::default() };
+        let mut parser = Parser::new(&config).unwrap();
+        let initial_dir = parser.working_dir.clone();
+
+        // Enter two directories
+        parser.parse_line("make[1]: Entering directory '/path/to/src'", &config);
+        parser.parse_line("make[2]: Entering directory '/path/to/src/sub'", &config);
+        assert_eq!(parser.working_dir, PathBuf::from("/path/to/src/sub"));
+
+        // Leave one
+        parser.parse_line("make[2]: Leaving directory '/path/to/src/sub'", &config);
+        assert_eq!(parser.working_dir, PathBuf::from("/path/to/src"));
+
+        // Leave another
+        parser.parse_line("make[1]: Leaving directory '/path/to/src'", &config);
+        assert_eq!(parser.working_dir, initial_dir);
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn test_absolute_file_path_conversion() {
+        let config = Config { no_strict: true, ..Config::default() };
+        let mut parser = Parser::new(&config).unwrap();
+        // Set working dir to a known path
+        parser.working_dir = PathBuf::from("/home/user/project");
+
+        // Test absolute file path that's under working dir
+        let cmd = "gcc -c /home/user/project/src/main.c -o main.o";
+        let result = parser.parse_line(cmd, &config);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].file, "src/main.c");
+    }
+
+    #[test]
+    fn test_compiler_with_version_suffix() {
+        let config = Config { no_strict: true, ..Config::default() };
+        let mut parser = Parser::new(&config).unwrap();
+
+        let compilers = vec!["gcc-11", "clang-14", "g++-12", "clang++-15"];
+        for compiler in compilers {
+            let cmd = format!("{compiler} -c test.c -o test.o");
+            let result = parser.parse_line(&cmd, &config);
+            assert_eq!(result.len(), 1, "Failed for compiler: {compiler}");
+        }
     }
 }
