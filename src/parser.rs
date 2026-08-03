@@ -1,14 +1,12 @@
 use crate::{CompileCommand, CompileDbError, Config};
 use anyhow::Context;
+use log::{debug, info, warn};
 use regex::Regex;
 use std::{
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::Command,
 };
-extern crate env_logger;
-extern crate log;
-use log::{debug, info, warn};
 
 pub struct Parser {
     compile_regex: Regex,
@@ -27,10 +25,7 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(config: &Config) -> Result<Self, CompileDbError> {
-        info!(
-            "Initializing parser with compile regex: {}",
-            config.regex_compile
-        );
+        info!("Initializing parser with compile regex: {}", config.regex_compile);
         info!("File regex: {}", config.regex_file);
 
         let compile_regex = Regex::new(&config.regex_compile)
@@ -184,10 +179,7 @@ impl Parser {
         let mut result = line.to_string();
         while let Some(caps) = self.nested_cmd_regex.captures(&result) {
             if let Some(nested_cmd) = caps.get(1) {
-                let output = Command::new("sh")
-                    .arg("-c")
-                    .arg(nested_cmd.as_str())
-                    .output();
+                let output = Command::new("sh").arg("-c").arg(nested_cmd.as_str()).output();
 
                 match output {
                     Ok(output) if output.status.success() => {
@@ -243,9 +235,7 @@ impl Parser {
         let args: Vec<String> = command.split_whitespace().map(String::from).collect();
 
         // Find compiler command
-        let compile_idx = args
-            .iter()
-            .position(|arg| self.compile_regex.is_match(arg))?;
+        let compile_idx = args.iter().position(|arg| self.compile_regex.is_match(arg))?;
         let arguments = args[compile_idx..].to_vec();
 
         // Extract source file
@@ -343,16 +333,8 @@ impl Parser {
         Some(CompileCommand {
             directory: self.working_dir.to_string_lossy().into_owned(),
             file,
-            command: if config.command_style {
-                Some(final_args.join(" "))
-            } else {
-                None
-            },
-            arguments: if config.command_style {
-                None
-            } else {
-                Some(final_args)
-            },
+            command: if config.command_style { Some(final_args.join(" ")) } else { None },
+            arguments: if config.command_style { None } else { Some(final_args) },
             output: None,
         })
     }
@@ -405,10 +387,7 @@ mod tests {
 
     #[test]
     fn test_directory_handling() {
-        let config = Config {
-            no_strict: true,
-            ..Config::default()
-        };
+        let config = Config { no_strict: true, ..Config::default() };
         let mut parser = Parser::new(&config).unwrap();
         let initial_dir = parser.working_dir.clone();
 
@@ -425,10 +404,7 @@ mod tests {
 
     #[test]
     fn test_nested_commands() {
-        let config = Config {
-            no_strict: true,
-            ..Config::default()
-        };
+        let config = Config { no_strict: true, ..Config::default() };
         let mut parser = Parser::new(&config).unwrap();
 
         // Test command with backticks
@@ -441,10 +417,7 @@ mod tests {
 
     #[test]
     fn test_cd_command() {
-        let config = Config {
-            no_strict: true,
-            ..Config::default()
-        };
+        let config = Config { no_strict: true, ..Config::default() };
         let mut parser = Parser::new(&config).unwrap();
         let initial_dir = parser.working_dir.clone();
 
@@ -463,15 +436,11 @@ mod tests {
         }
 
         // enable logging, since log defaults to silent
-        unsafe {
-            std::env::set_var("RUST_LOG", "debug");
-        }
-        env_logger::init();
+        let mut builder = env_logger::Builder::from_default_env();
+        builder.filter_level(log::LevelFilter::Debug);
+        builder.init();
 
-        let config = Config {
-            no_strict: true,
-            ..Config::default()
-        };
+        let config = Config { no_strict: true, ..Config::default() };
         let mut parser = Parser::new(&config).unwrap();
         parser.working_dir = PathBuf::from("/foo/bar/workspace/project/core/engine/drivers/module");
 
@@ -485,10 +454,7 @@ mod tests {
             cmd.directory, "/foo/bar/workspace/project/core/engine/drivers/module",
             "Parser did not find correct directory"
         );
-        assert_eq!(
-            cmd.file, "core/src/xyz/widget.c",
-            "Parser did not find correct file"
-        );
+        assert_eq!(cmd.file, "core/src/xyz/widget.c", "Parser did not find correct file");
 
         let expected_args = vec![
             "/foo/bar/workspace/tools/hosts/platform-x64/compiler/gcc-9.2.0/bin/x86_64-none-linux-gcc",

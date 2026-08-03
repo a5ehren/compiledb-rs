@@ -1,0 +1,11 @@
+# Rustfmt configuration for compiledb-rs
+# Run with: cargo fmt --all
+
+edition = "2024"
+max_width = 100
+tab_spaces = 4
+hard_tabs = false
+newline_style = "Unix"
+use_small_heuristics = "Max"
+fn_params_layout = "Tall"
+reorder_imports = true
