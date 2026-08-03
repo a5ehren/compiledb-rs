@@ -1,11 +1,9 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use compiledb::{CompileDbError, Config};
+use log::info;
 use std::io::BufRead;
 use std::path::PathBuf;
-extern crate env_logger;
-extern crate log;
-use log::info;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -94,7 +92,7 @@ fn run() -> Result<(), CompileDbError> {
         output_file: cli.output,
         build_dir: cli
             .build_dir
-            .unwrap_or_else(|| std::env::current_dir().unwrap()),
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))),
         exclude_patterns: cli.exclude,
         no_build: cli.no_build,
         verbose: cli.verbose,
@@ -116,19 +114,13 @@ fn run() -> Result<(), CompileDbError> {
             // Write compilation database
             let file = std::fs::File::create(&config.output_file)
                 .with_context(|| {
-                    format!(
-                        "Failed to create output file: {}",
-                        config.output_file.display()
-                    )
+                    format!("Failed to create output file: {}", config.output_file.display())
                 })
                 .map_err(|e| CompileDbError::Io(std::io::Error::other(e)))?;
 
             serde_json::to_writer_pretty(file, &commands).map_err(CompileDbError::Json)?;
 
-            info!(
-                "Wrote compilation database to {}",
-                config.output_file.display()
-            );
+            info!("Wrote compilation database to {}", config.output_file.display());
 
             // Run actual build if requested
             wrapper.run_build(&args, &config)?;
@@ -179,19 +171,13 @@ fn run() -> Result<(), CompileDbError> {
             // Write compilation database
             let file = std::fs::File::create(&config.output_file)
                 .with_context(|| {
-                    format!(
-                        "Failed to create output file: {}",
-                        config.output_file.display()
-                    )
+                    format!("Failed to create output file: {}", config.output_file.display())
                 })
                 .map_err(|e| CompileDbError::Io(std::io::Error::other(e)))?;
 
             serde_json::to_writer_pretty(file, &commands).map_err(CompileDbError::Json)?;
 
-            info!(
-                "Wrote compilation database to {}",
-                config.output_file.display()
-            );
+            info!("Wrote compilation database to {}", config.output_file.display());
         }
     }
 

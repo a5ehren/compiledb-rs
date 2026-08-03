@@ -1,12 +1,10 @@
 use crate::{CompileCommand, CompileDbError, Config};
+use log::{debug, info};
 use std::{
     io::{BufRead, BufReader},
     path::PathBuf,
     process::{Command, Stdio},
 };
-extern crate env_logger;
-extern crate log;
-use log::{debug, info};
 
 pub struct MakeWrapper {
     make_path: PathBuf,
@@ -41,9 +39,7 @@ impl MakeWrapper {
 
         debug!("Executing make command: {command:?}");
 
-        let mut child = command
-            .spawn()
-            .map_err(|e| CompileDbError::MakeError(e.to_string()))?;
+        let mut child = command.spawn().map_err(|e| CompileDbError::MakeError(e.to_string()))?;
 
         let stdout = child.stdout.take().ok_or_else(|| {
             CompileDbError::MakeError("Failed to capture make stdout".to_string())
@@ -72,9 +68,7 @@ impl MakeWrapper {
         }
 
         // Wait for make to finish
-        let status = child
-            .wait()
-            .map_err(|e| CompileDbError::MakeError(e.to_string()))?;
+        let status = child.wait().map_err(|e| CompileDbError::MakeError(e.to_string()))?;
 
         if !status.success() && !config.no_build {
             return Err(CompileDbError::MakeError("Make command failed".to_string()));
@@ -103,14 +97,10 @@ impl MakeWrapper {
 
         debug!("Running build command: {command:?}");
 
-        let status = command
-            .status()
-            .map_err(|e| CompileDbError::MakeError(e.to_string()))?;
+        let status = command.status().map_err(|e| CompileDbError::MakeError(e.to_string()))?;
 
         if !status.success() {
-            return Err(CompileDbError::MakeError(
-                "Build command failed".to_string(),
-            ));
+            return Err(CompileDbError::MakeError("Build command failed".to_string()));
         }
 
         Ok(())
