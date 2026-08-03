@@ -1,6 +1,7 @@
 use crate::{CompileCommand, CompileDbError, Config};
 use anyhow::Context;
 use log::{debug, info, warn};
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::{
     io::{BufRead, BufReader},
@@ -8,17 +9,32 @@ use std::{
     process::Command,
 };
 
+// Static regex patterns - compiled once at startup
+static CD_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"^cd\s+(.*)$"#).expect("Invalid CD_REGEX"));
+static SH_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"\s*(;|&&|\|\|)\s*"#).expect("Invalid SH_REGEX"));
+static NESTED_CMD_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"`([^`]+)`"#).expect("Invalid NESTED_CMD_REGEX"));
+static MAKE_ENTER_DIR: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"^.*?(?:mingw32-make|gmake|make).*?: Entering directory .*['\`](.*)['\`]$"#)
+        .expect("Invalid MAKE_ENTER_DIR")
+});
+static MAKE_LEAVE_DIR: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"^.*?(?:mingw32-make|gmake|make).*?: Leaving directory .*'(.*)'$"#)
+        .expect("Invalid MAKE_LEAVE_DIR")
+});
+static MAKE_CMD_DIR: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"^\s*(?:mingw32-make|gmake|make).*?-C\s+(.*?)(\s|$)"#)
+        .expect("Invalid MAKE_CMD_DIR")
+});
+static CHECKING_MAKE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"^\s?checking whether .*(yes|no)$"#).expect("Invalid CHECKING_MAKE"));
+
 pub struct Parser {
     compile_regex: Regex,
     file_regex: Regex,
     exclude_regex: Option<Regex>,
-    cd_regex: Regex,
-    sh_regex: Regex,
-    nested_cmd_regex: Regex,
-    make_enter_dir: Regex,
-    make_leave_dir: Regex,
-    make_cmd_dir: Regex,
-    checking_make: Regex,
     dir_stack: Vec<PathBuf>,
     working_dir: PathBuf,
 }
@@ -57,20 +73,6 @@ impl Parser {
             compile_regex,
             file_regex,
             exclude_regex,
-            cd_regex: Regex::new(r#"^cd\s+(.*)$"#).unwrap(),
-            sh_regex: Regex::new(r#"\s*(;|&&|\|\|)\s*"#).unwrap(),
-            nested_cmd_regex: Regex::new(r#"`([^`]+)`"#).unwrap(),
-            make_enter_dir: Regex::new(
-                r#"^.*?(?:mingw32-make|gmake|make).*?: Entering directory .*['`"](.*)['`"]$"#,
-            )
-            .unwrap(),
-            make_leave_dir: Regex::new(
-                r#"^.*?(?:mingw32-make|gmake|make).*?: Leaving directory .*'(.*)'$"#,
-            )
-            .unwrap(),
-            make_cmd_dir: Regex::new(r#"^\s*(?:mingw32-make|gmake|make).*?-C\s+(.*?)(\s|$)"#)
-                .unwrap(),
-            checking_make: Regex::new(r#"^\s?checking whether .*(yes|no)$"#).unwrap(),
             dir_stack: vec![working_dir.clone()],
             working_dir,
         })
@@ -82,7 +84,7 @@ impl Parser {
         let mut commands = Vec::new();
 
         // Skip empty lines and make checking lines
-        if line.is_empty() || self.checking_make.is_match(line) {
+        if line.is_empty() || CHECKING_MAKE.is_match(line) {
             return commands;
         }
 
@@ -107,7 +109,7 @@ impl Parser {
         // Split into individual commands
         for cmd in self.split_commands(&line) {
             // Handle cd commands
-            if let Some(caps) = self.cd_regex.captures(&cmd) {
+            if let Some(caps) = CD_REGEX.captures(&cmd) {
                 if let Some(dir) = caps.get(1) {
                     let new_dir = PathBuf::from(dir.as_str());
                     self.working_dir = if new_dir.is_absolute() {
@@ -166,18 +168,13 @@ impl Parser {
 
     /// Split a command string into individual commands based on shell operators
     fn split_commands(&self, command: &str) -> Vec<String> {
-        self.sh_regex
-            .split(command)
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .map(String::from)
-            .collect()
+        SH_REGEX.split(command).map(str::trim).filter(|s| !s.is_empty()).map(String::from).collect()
     }
 
     /// Process nested commands (backtick substitution)
     fn process_nested_commands(&self, line: &str) -> String {
         let mut result = line.to_string();
-        while let Some(caps) = self.nested_cmd_regex.captures(&result) {
+        while let Some(caps) = NESTED_CMD_REGEX.captures(&result) {
             if let Some(nested_cmd) = caps.get(1) {
                 let output = Command::new("sh").arg("-c").arg(nested_cmd.as_str()).output();
 
@@ -198,7 +195,7 @@ impl Parser {
 
     /// Update working directory based on make directory commands
     fn update_working_dir(&mut self, line: &str) -> bool {
-        if let Some(caps) = self.make_enter_dir.captures(line) {
+        if let Some(caps) = MAKE_ENTER_DIR.captures(line) {
             if let Some(dir) = caps.get(1) {
                 let enter_dir = PathBuf::from(dir.as_str());
                 self.dir_stack.insert(0, enter_dir.clone());
@@ -206,7 +203,7 @@ impl Parser {
                 info!("Entering directory: {}", self.working_dir.display());
                 return true;
             }
-        } else if self.make_leave_dir.captures(line).is_some() {
+        } else if MAKE_LEAVE_DIR.captures(line).is_some() {
             if !self.dir_stack.is_empty() {
                 self.dir_stack.remove(0);
                 if !self.dir_stack.is_empty() {
@@ -215,7 +212,7 @@ impl Parser {
                 info!("Leaving directory: {}", self.working_dir.display());
                 return true;
             }
-        } else if let Some(caps) = self.make_cmd_dir.captures(line) {
+        } else if let Some(caps) = MAKE_CMD_DIR.captures(line) {
             if let Some(dir) = caps.get(1) {
                 let enter_dir = PathBuf::from(dir.as_str());
                 if enter_dir.as_os_str() != "." {
